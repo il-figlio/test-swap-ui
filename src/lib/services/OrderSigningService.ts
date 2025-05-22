@@ -106,9 +106,27 @@ export class OrderSigningService {
   }
 
   async sendOrderToTxCache(signedOrder: SignedOrder, txCacheUrl: string): Promise<void> {
-    const serializedOrder = serializeBigInts(signedOrder);
+    // Create the properly formatted order for the transaction cache
+    const formattedOrder = {
+      permit: {
+        permitted: signedOrder.permit.permit.permitted.map(p => ({
+          token: p.token,
+          amount: p.amount.toString()
+        })),
+        nonce: signedOrder.permit.permit.nonce.toString(),
+        deadline: signedOrder.permit.permit.deadline.toString()
+      },
+      owner: signedOrder.permit.owner,
+      signature: signedOrder.permit.signature,
+      outputs: signedOrder.outputs.map(o => ({
+        token: o.token,
+        amount: o.amount.toString(),
+        recipient: o.recipient,
+        chainId: Number(o.chainId) // Ensure chainId is a number
+      }))
+    };
     
-    console.log('Sending order to cache:', JSON.stringify(serializedOrder, null, 2));
+    console.log('Sending order to cache:', JSON.stringify(formattedOrder, null, 2));
     
     try {
       // Use API route in production to avoid CORS
@@ -123,16 +141,23 @@ export class OrderSigningService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify(serializedOrder),
+        body: JSON.stringify(formattedOrder),
       });
   
-      const responseData = await response.json();
+      const responseText = await response.text();
       console.log('Response status:', response.status);
-      console.log('Response data:', responseData);
+      console.log('Response text:', responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = { message: responseText };
+      }
   
       if (!response.ok) {
-        const errorDetails = responseData.details ? JSON.stringify(responseData.details) : '';
-        throw new Error(`${responseData.error || 'Failed to send order'}: ${response.status} ${errorDetails}`);
+        const errorDetails = responseData.details || responseData.error || responseData.message || '';
+        throw new Error(`Transaction cache error: ${response.status} ${errorDetails}`);
       }
     } catch (error) {
       console.error('Transaction cache error:', error);
