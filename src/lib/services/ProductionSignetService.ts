@@ -1,9 +1,9 @@
 import { JsonRpcProvider, BrowserProvider, Signer } from "ethers";
-import { OrderSigningService, Order, SignedOrder } from './OrderSigningService';
+import { OrderSigningService } from './OrderSigningService';
+import { Order, SignedOrder } from '../types/signet';  // Import from types directly
 import { TxCacheClient } from './TxCacheClient';
 import { CONTRACT_ADDRESSES, API_ENDPOINTS } from '../constants/contracts';
 import { SwapInput, SwapState, SwapStatus } from '../types/signet';
-import { parseUnits } from 'viem';
 
 export interface OrderMonitoringCallbacks {
   onStatusChange?: (state: SwapState) => void;

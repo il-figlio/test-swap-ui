@@ -2,6 +2,8 @@ import { Signer, TypedDataDomain, TypedDataField } from 'ethers';
 import { parseUnits } from 'viem';
 import { Order, SignedOrder, TokenPermissions, Output } from '../types/signet';
 
+export type { Order, SignedOrder, TokenPermissions, Output } from '../types/signet';
+
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
 const getPermit2Domain = (chainId: number): TypedDataDomain => ({
