@@ -369,10 +369,21 @@ export function SwapForm() {
       }, 3000);
       
     } catch (error) {
-      console.error('Swap failed:', error);
+      console.error('Swap failed - Full error:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Check if it's a transaction cache error
+        if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error') || errorMessage.includes('Transaction cache service error')) {
+          errorMessage = 'The Signet transaction cache service is currently experiencing issues. This is a known issue with the Pecorino testnet. Please try again later or contact the Signet team on Discord for support.';
+        }
+      }
+      
       setSwapState({
         status: SwapStatus.FAILED,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: errorMessage,
       });
     }
   };

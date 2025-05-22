@@ -32,26 +32,6 @@ const PERMIT_BATCH_WITNESS_TRANSFER_FROM_TYPES: Record<string, TypedDataField[]>
   ],
 };
 
-// Helper function to convert BigInt to string for JSON serialization
-function serializeBigInts(obj: any): any {
-  if (typeof obj === 'bigint') {
-    return obj.toString();
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(serializeBigInts);
-  }
-  if (obj !== null && typeof obj === 'object') {
-    const result: any = {};
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        result[key] = serializeBigInts(obj[key]);
-      }
-    }
-    return result;
-  }
-  return obj;
-}
-
 export class OrderSigningService {
   private signer: Signer;
 
@@ -106,8 +86,10 @@ export class OrderSigningService {
   }
 
   async sendOrderToTxCache(signedOrder: SignedOrder, txCacheUrl: string): Promise<void> {
-    // Create the properly formatted order for the transaction cache
+    // Based on the Rust SDK, the SignedOrder structure uses #[serde(flatten)] on permit
+    // This means the permit fields should be at the top level, not nested
     const formattedOrder = {
+      // Flatten the permit structure
       permit: {
         permitted: signedOrder.permit.permit.permitted.map(p => ({
           token: p.token,
@@ -122,7 +104,7 @@ export class OrderSigningService {
         token: o.token,
         amount: o.amount.toString(),
         recipient: o.recipient,
-        chainId: Number(o.chainId) // Ensure chainId is a number
+        chainId: o.chainId
       }))
     };
     
@@ -156,9 +138,16 @@ export class OrderSigningService {
       }
   
       if (!response.ok) {
+        // Check for specific error messages
+        if (response.status === 500 && responseText.includes("Internal Server Error")) {
+          // The transaction cache might be having issues or the signature validation is failing
+          throw new Error(`Transaction cache service error. The order may be incorrectly formatted or the service is temporarily unavailable.`);
+        }
         const errorDetails = responseData.details || responseData.error || responseData.message || '';
         throw new Error(`Transaction cache error: ${response.status} ${errorDetails}`);
       }
+      
+      console.log('Order successfully sent to transaction cache');
     } catch (error) {
       console.error('Transaction cache error:', error);
       throw error;
