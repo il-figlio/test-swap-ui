@@ -54,59 +54,107 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES, delay = INITIA
 
 export class PriceService {
   static async getTokenPrice(token: Token): Promise<number | null> {
-    try {
-      // Check cache first
-      const cached = priceCache.get(token.coingeckoId);
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        return cached.price;
-      }
+    // Try multiple sources in order of preference
+    const priceFetchers = [
+      () => this.fetchFromDefiLlama(token),
+      () => this.fetchFromCryptoCompare(token),
+      () => this.fetchFromCoinGecko(token),
+    ];
 
-      // Try fetching from API with retries
+    for (const fetcher of priceFetchers) {
       try {
-        const response = await fetchWithRetry(
-          `${COINGECKO_API}/simple/price?ids=${token.coingeckoId}&vs_currencies=usd`
-        );
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format');
+        const price = await fetcher();
+        if (price && price > 0) {
+          console.log(`Got price for ${token.symbol} from API: $${price}`);
+          return price;
         }
-
-        const data = await response.json();
-        
-        if (!data || typeof data !== 'object' || !data[token.coingeckoId] || typeof data[token.coingeckoId].usd !== 'number') {
-          throw new Error(`Invalid price data structure for token: ${token.symbol}`);
-        }
-
-        const price = data[token.coingeckoId].usd;
-
-        if (price <= 0 || !isFinite(price)) {
-          throw new Error(`Invalid price value for token: ${token.symbol}`);
-        }
-
-        // Update cache
-        priceCache.set(token.coingeckoId, {
-          price,
-          timestamp: Date.now()
-        });
-
-        return price;
-      } catch (apiError) {
-        console.warn(`API fetch failed for ${token.symbol}, using fallback price:`, apiError);
-        return FALLBACK_PRICES[token.coingeckoId] ?? 1;
+      } catch (error) {
+        console.warn(`Price fetch failed for ${token.symbol}, trying next source:`, error);
+        continue;
       }
-    } catch (error) {
-      console.error(`Error fetching price for ${token.symbol}:`, error);
+    }
+
+    // Return null if all sources fail - let the UI handle it
+    console.error(`All price sources failed for ${token.symbol}`);
+    return null;
+  }
+
+  private static async fetchFromDefiLlama(token: Token): Promise<number> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const response = await fetch(
+        `https://coins.llama.fi/prices/current/coingecko:${token.coingeckoId}`,
+        { signal: controller.signal }
+      );
       
-      // Return cached price if available, even if expired
-      const cached = priceCache.get(token.coingeckoId);
-      if (cached) {
-        console.warn(`Using stale cached price for ${token.symbol} due to fetch error`);
-        return cached.price;
+      if (!response.ok) throw new Error(`DefiLlama API error: ${response.status}`);
+      
+      const data = await response.json();
+      const key = `coingecko:${token.coingeckoId}`;
+      
+      if (!data.coins?.[key]?.price) {
+        throw new Error('No price data from DefiLlama');
       }
       
-      // If no cached price is available, use fallback price
-      return FALLBACK_PRICES[token.coingeckoId] ?? 1;
+      return data.coins[key].price;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private static async fetchFromCryptoCompare(token: Token): Promise<number> {
+    const symbolMap: Record<string, string> = {
+      'ethereum': 'ETH',
+      'usd-coin': 'USDC',
+      'tether': 'USDT',
+      'wrapped-bitcoin': 'WBTC',
+    };
+    
+    const symbol = symbolMap[token.coingeckoId];
+    if (!symbol) throw new Error('Symbol not mapped for CryptoCompare');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const response = await fetch(
+        `https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=USD`,
+        { signal: controller.signal }
+      );
+      
+      if (!response.ok) throw new Error(`CryptoCompare API error: ${response.status}`);
+      
+      const data = await response.json();
+      if (!data.USD) throw new Error('No USD price from CryptoCompare');
+      
+      return data.USD;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private static async fetchFromCoinGecko(token: Token): Promise<number> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${token.coingeckoId}&vs_currencies=usd`,
+        { signal: controller.signal }
+      );
+      
+      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      
+      const data = await response.json();
+      const price = data[token.coingeckoId]?.usd;
+      
+      if (!price) throw new Error('No price from CoinGecko');
+      
+      return price;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

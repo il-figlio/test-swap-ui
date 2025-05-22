@@ -3,30 +3,22 @@
 import React from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ModeToggle } from '@/components/ui/mode-toggle';
-import Image from 'next/image';
 import { BRANDING } from '@/lib/constants/branding';
 
 export function Header() {
   return (
-    <header className="border-b border-border py-4">
-      <div className="container mx-auto px-4 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="h-6 w-6 relative">
-            <Image
-              src="/logo.svg"
-              alt="Signet Logo"
-              fill
-              className="object-contain"
-            />
-          </div>
-          <h1 className="text-xl font-bold">{BRANDING.appName}</h1>
+    <header style={{ borderBottom: '1px solid #ccc', padding: '16px 0', backgroundColor: '#f0f0f0' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '24px', height: '24px', backgroundColor: '#3B82F6', borderRadius: '4px' }}></div>
+          <h1 style={{ fontSize: '20px', fontWeight: 'bold' }}>{BRANDING.appName}</h1>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <ModeToggle />
           <ConnectButton />
         </div>
       </div>
     </header>
   );
-} 
+}

@@ -6,4 +6,7 @@ export const BRANDING = {
   accentColor: '#F97316',
   githubUrl: 'https://github.com/init4tech',
   twitterUrl: 'https://x.com/signetsh',
-}; 
+};
+
+// Add default export
+export default BRANDING;

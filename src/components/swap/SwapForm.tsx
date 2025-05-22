@@ -18,6 +18,19 @@ import { PriceService } from '@/lib/services/PriceService';
 import { CONTRACT_ADDRESSES, getOrdersContract, getPermit2Contract } from '@/lib/constants/contracts';
 import { ArrowDownUp, Check, Loader2, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
 
+interface StoredOrder {
+  id: string;
+  timestamp: number;
+  sourceToken: string;
+  targetToken: string;
+  sourceAmount: string;
+  targetAmount: string;
+  sourceChainId: number;
+  targetChainId: number;
+  status: 'pending' | 'filled' | 'expired';
+  txHash?: string;
+}
+
 export function SwapForm() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -56,7 +69,12 @@ export function SwapForm() {
         return null;
       }
     },
-    { refreshInterval: 30000, shouldRetryOnError: true }
+    { 
+      refreshInterval: 30000, 
+      shouldRetryOnError: true,
+      errorRetryInterval: 5000,
+      errorRetryCount: 3
+    }
   );
 
   const { data: targetPrice, error: targetPriceError } = useSWR(
@@ -70,7 +88,12 @@ export function SwapForm() {
         return null;
       }
     },
-    { refreshInterval: 30000, shouldRetryOnError: true }
+    { 
+      refreshInterval: 30000, 
+      shouldRetryOnError: true,
+      errorRetryInterval: 5000,
+      errorRetryCount: 3
+    }
   );
 
   // Logic for token selection based on chain direction
@@ -78,17 +101,26 @@ export function SwapForm() {
 
   // Calculate target amount when source amount or prices change
   useEffect(() => {
-    if (!amount || !sourcePrice || !targetPrice) {
+    if (!amount) {
       setTargetAmount('');
       return;
     }
 
+    // If prices aren't available, just show the same amount (1:1)
+    if (!sourcePrice || !targetPrice) {
+      if (sourceToken.symbol === targetToken.symbol) {
+        setTargetAmount(amount); // Same token, so 1:1 is correct
+      } else {
+        setTargetAmount(''); // Can't calculate without prices
+      }
+      return;
+    }
+
+    // Normal calculation when prices are available
     try {
       if (isHostToSignet && sourceToken.symbol === targetToken.symbol) {
-        // Host to Signet: Always 1:1 for same token
         setTargetAmount(amount);
       } else {
-        // All other cases: Market value calculation
         const sourceValue = parseFloat(amount) * sourcePrice;
         const equivalentAmount = sourceValue / targetPrice;
         setTargetAmount(equivalentAmount.toFixed(6));
@@ -354,6 +386,28 @@ export function SwapForm() {
       
       console.log('Order sent to transaction cache');
       
+      // Save order to localStorage for history
+      const orderRecord: StoredOrder = {
+        id: `order-${Date.now()}`,
+        timestamp: Math.floor(Date.now() / 1000),
+        sourceToken: sourceTokenAddress,
+        targetToken: targetTokenAddress,
+        sourceAmount: amount,
+        targetAmount: targetAmount,
+        sourceChainId,
+        targetChainId,
+        status: 'pending'
+      };
+
+      try {
+        const existing = localStorage.getItem('signet-orders');
+        const orders = existing ? JSON.parse(existing) : [];
+        orders.unshift(orderRecord);
+        localStorage.setItem('signet-orders', JSON.stringify(orders.slice(0, 50)));
+      } catch (e) {
+        console.error('Failed to save order to history:', e);
+      }
+
       // Success!
       setSwapState({
         status: SwapStatus.COMPLETED,
@@ -571,6 +625,16 @@ export function SwapForm() {
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Unable to fetch current prices. Using fallback prices.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Show a different message when prices fail */}
+        {(!sourcePrice || !targetPrice) && amount && sourceToken.symbol !== targetToken.symbol && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Unable to fetch current prices. Cross-token exchange rates unavailable.
             </AlertDescription>
           </Alert>
         )}
