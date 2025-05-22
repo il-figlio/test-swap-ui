@@ -108,12 +108,14 @@ export class OrderSigningService {
   async sendOrderToTxCache(signedOrder: SignedOrder, txCacheUrl: string): Promise<void> {
     const serializedOrder = serializeBigInts(signedOrder);
     
-    console.log('Sending order to cache:', serializedOrder);
+    console.log('Sending order to cache:', JSON.stringify(serializedOrder, null, 2));
     
     try {
       // Use API route in production to avoid CORS
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost';
       const url = isProduction ? '/api/tx-cache' : `${txCacheUrl}/orders`;
+      
+      console.log('Using URL:', url);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -125,10 +127,12 @@ export class OrderSigningService {
       });
   
       const responseData = await response.json();
-      console.log('Response:', responseData);
+      console.log('Response status:', response.status);
+      console.log('Response data:', responseData);
   
       if (!response.ok) {
-        throw new Error(responseData.error || `Failed to send order: ${response.status}`);
+        const errorDetails = responseData.details ? JSON.stringify(responseData.details) : '';
+        throw new Error(`${responseData.error || 'Failed to send order'}: ${response.status} ${errorDetails}`);
       }
     } catch (error) {
       console.error('Transaction cache error:', error);
