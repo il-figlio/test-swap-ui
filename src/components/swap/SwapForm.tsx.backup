@@ -1,0 +1,201 @@
+"use client";
+
+import React, { useState } from 'react';
+import { useAccount } from 'wagmi';
+import { formatUnits, parseUnits } from 'viem';
+import useSWR from 'swr';
+
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SwapCard } from '@/components/layout/SwapCard';
+import { TokenSelector } from './TokenSelector';
+import { ChainSelector } from './ChainSelector';
+import { SUPPORTED_CHAINS, PECORINO_HOST_CHAIN_ID, PECORINO_SIGNET_CHAIN_ID } from '@/lib/constants/chains';
+import { TOKENS, Token, SUPPORTED_TOKENS } from '@/lib/constants/tokens';
+import { SwapInput, SwapState, SwapStatus } from '@/lib/types/signet';
+import { SignetService } from '@/lib/services/SignetService';
+import { PriceService } from '@/lib/services/PriceService';
+import { ArrowDownUp, Check, Loader2, AlertTriangle } from 'lucide-react';
+
+export function SwapForm() {
+  const { address } = useAccount();
+
+  const [sourceChainId, setSourceChainId] = useState<number>(PECORINO_HOST_CHAIN_ID);
+  const [targetChainId, setTargetChainId] = useState<number>(PECORINO_SIGNET_CHAIN_ID);
+  const [sourceToken, setSourceToken] = useState<Token>(SUPPORTED_TOKENS[0]);
+  const [targetToken, setTargetToken] = useState<Token>(SUPPORTED_TOKENS[1]);
+  const [amount, setAmount] = useState<string>('');
+  const [swapState, setSwapState] = useState<SwapState>({ status: SwapStatus.IDLE });
+
+  const { data: prices, error: priceError } = useSWR('prices', async () => {
+    const priceService = PriceService.getInstance();
+    await priceService.updatePrices();
+    return SUPPORTED_TOKENS.map(token => ({
+      address: token.address,
+      price: priceService.getPrice(token.address),
+    }));
+  });
+
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+  };
+
+  const handleSwap = async () => {
+    if (!address || !amount) return;
+
+    try {
+      setSwapState({ status: SwapStatus.CREATING_ORDER });
+
+      const signetService = SignetService.getInstance();
+      const parsedAmount = parseUnits(amount, sourceToken.decimals);
+
+      const swapInput: SwapInput = {
+        sourceChainId,
+        targetChainId,
+        sourceToken: sourceToken.addresses[sourceChainId],
+        targetToken: targetToken.addresses[targetChainId],
+        amount: parsedAmount,
+        sender: address,
+        recipient: address,
+      };
+
+      const result = await signetService.executeSwap(swapInput);
+      setSwapState(result);
+    } catch (error) {
+      console.error('Error executing swap:', error);
+      setSwapState({
+        status: SwapStatus.FAILED,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
+
+  const handleChainSwitch = async (chainId: number) => {
+    // Chain switching is handled by the ChainSelector component
+  };
+
+  const renderStatus = () => {
+    switch (swapState.status) {
+      case SwapStatus.CREATING_ORDER:
+      case SwapStatus.SIMULATING_BUNDLE:
+      case SwapStatus.SENDING_BUNDLE:
+        return (
+          <Alert>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>Processing your swap...</AlertDescription>
+          </Alert>
+        );
+      case SwapStatus.COMPLETED:
+        return (
+          <Alert className="bg-green-50">
+            <Check className="h-4 w-4 text-green-500" />
+            <AlertDescription>Swap completed successfully!</AlertDescription>
+          </Alert>
+        );
+      case SwapStatus.FAILED:
+        return (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{swapState.error || 'Swap failed'}</AlertDescription>
+          </Alert>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <SwapCard
+      title="Cross-Chain Swap"
+      onSubmit={handleSwap}
+      submitText="Swap"
+      submitDisabled={!address || !amount || swapState.status !== SwapStatus.IDLE}
+      learnMoreUrl="https://docs.signet.sh"
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">From</label>
+          <div className="flex space-x-2">
+            <ChainSelector
+              value={sourceChainId}
+              onChange={setSourceChainId}
+              onSwitch={handleChainSwitch}
+            />
+            <TokenSelector
+              label="You Send"
+              tokens={SUPPORTED_TOKENS}
+              tokens={SUPPORTED_TOKENS}
+              tokens={SUPPORTED_TOKENS}
+              tokens={SUPPORTED_TOKENS}
+              selectedToken={sourceToken}
+              amount={amount}
+              onTokenChange={setSourceToken}
+              onAmountChange={setAmount}
+              chainId={sourceChainId}
+              disabled={swapState.status !== SwapStatus.IDLE}
+            />
+          </div>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => handleAmountChange(e.target.value)}
+            placeholder="0.0"
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setSourceChainId(targetChainId);
+              setTargetChainId(sourceChainId);
+              setSourceToken(targetToken);
+              setTargetToken(sourceToken);
+            }}
+          >
+            <ArrowDownUp className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">To</label>
+          <div className="flex space-x-2">
+            <ChainSelector
+              value={targetChainId}
+              onChange={setTargetChainId}
+              onSwitch={handleChainSwitch}
+            />
+            <TokenSelector
+              label="You Send"
+              tokens={SUPPORTED_TOKENS}
+              tokens={SUPPORTED_TOKENS}
+              tokens={SUPPORTED_TOKENS}
+              selectedToken={targetToken}
+              amount={targetAmount}
+              onTokenChange={setTargetToken}
+              onAmountChange={setTargetAmount}
+              chainId={targetChainId}
+            />
+          </div>
+          <div className="w-full p-2 border rounded bg-muted">
+            {amount && prices ? (
+              formatUnits(
+                PriceService.getInstance().calculateAmount(
+                  Number(amount) * prices.find(p => p.address === sourceToken.address)?.price || 0,
+                  targetToken.address
+                ),
+                targetToken.decimals
+              )
+            ) : (
+              '0.0'
+            )}
+          </div>
+        </div>
+
+        {renderStatus()}
+      </div>
+    </SwapCard>
+  );
+} 

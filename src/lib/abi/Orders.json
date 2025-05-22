@@ -1,0 +1,218 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sourceToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "targetToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      }
+    ],
+    "name": "createOrder",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "executeOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "type": "function",
+    "name": "fill",
+    "inputs": [
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct IOrders.Output[]",
+        "components": [
+          { "name": "token", "type": "address", "internalType": "address" },
+          { "name": "amount", "type": "uint256", "internalType": "uint256" },
+          { "name": "recipient", "type": "address", "internalType": "address" },
+          { "name": "chainId", "type": "uint32", "internalType": "uint32" }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "fillPermit2",
+    "inputs": [
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct IOrders.Output[]",
+        "components": [
+          { "name": "token", "type": "address", "internalType": "address" },
+          { "name": "amount", "type": "uint256", "internalType": "uint256" },
+          { "name": "recipient", "type": "address", "internalType": "address" },
+          { "name": "chainId", "type": "uint32", "internalType": "uint32" }
+        ]
+      },
+      {
+        "name": "permit2",
+        "type": "tuple",
+        "internalType": "struct UsesPermit2.Permit2Batch",
+        "components": [
+          {
+            "name": "permit",
+            "type": "tuple",
+            "internalType": "struct ISignatureTransfer.PermitBatchTransferFrom",
+            "components": [
+              {
+                "name": "permitted",
+                "type": "tuple[]",
+                "internalType": "struct ISignatureTransfer.TokenPermissions[]",
+                "components": [
+                  {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                  }
+                ]
+              },
+              { "name": "nonce", "type": "uint256", "internalType": "uint256" },
+              {
+                "name": "deadline",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          { "name": "owner", "type": "address", "internalType": "address" },
+          { "name": "signature", "type": "bytes", "internalType": "bytes" }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initiate",
+    "inputs": [
+      { "name": "deadline", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "inputs",
+        "type": "tuple[]",
+        "internalType": "struct IOrders.Input[]",
+        "components": [
+          { "name": "token", "type": "address", "internalType": "address" },
+          { "name": "amount", "type": "uint256", "internalType": "uint256" }
+        ]
+      },
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct IOrders.Output[]",
+        "components": [
+          { "name": "token", "type": "address", "internalType": "address" },
+          { "name": "amount", "type": "uint256", "internalType": "uint256" },
+          { "name": "recipient", "type": "address", "internalType": "address" },
+          { "name": "chainId", "type": "uint32", "internalType": "uint32" }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "initiatePermit2",
+    "inputs": [
+      {
+        "name": "tokenRecipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct IOrders.Output[]",
+        "components": [
+          { "name": "token", "type": "address", "internalType": "address" },
+          { "name": "amount", "type": "uint256", "internalType": "uint256" },
+          { "name": "recipient", "type": "address", "internalType": "address" },
+          { "name": "chainId", "type": "uint32", "internalType": "uint32" }
+        ]
+      },
+      {
+        "name": "permit2",
+        "type": "tuple",
+        "internalType": "struct UsesPermit2.Permit2Batch",
+        "components": [
+          {
+            "name": "permit",
+            "type": "tuple",
+            "internalType": "struct ISignatureTransfer.PermitBatchTransferFrom",
+            "components": [
+              {
+                "name": "permitted",
+                "type": "tuple[]",
+                "internalType": "struct ISignatureTransfer.TokenPermissions[]",
+                "components": [
+                  {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                  }
+                ]
+              },
+              { "name": "nonce", "type": "uint256", "internalType": "uint256" },
+              {
+                "name": "deadline",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          { "name": "owner", "type": "address", "internalType": "address" },
+          { "name": "signature", "type": "bytes", "internalType": "bytes" }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+] 
