@@ -1,7 +1,26 @@
-import { Address, TransactionReceipt } from 'viem';
-import { TransactionReceipt as EthersTransactionReceipt } from "ethers";
+import { TransactionReceipt } from "ethers";
+import { Address } from "viem";
 
-// Order types for Signet
+// Order-related Types (matching OrderSigningService)
+export interface Input {
+  token: string;
+  amount: bigint;
+}
+
+export interface Output {
+  token: string;
+  amount: bigint;
+  recipient: string;
+  chainId: number;
+}
+
+export interface Order {
+  inputs: Input[];
+  outputs: Output[];
+  deadline: bigint;
+}
+
+// For SignetService compatibility
 export interface OrderInput {
   token: string;
   amount: bigint;
@@ -14,17 +33,7 @@ export interface OrderOutput {
   chainId: number;
 }
 
-export interface Order {
-  inputs: OrderInput[];
-  outputs: OrderOutput[];
-  deadline: bigint;
-}
-
-export interface SignedOrder {
-  permit: Permit2Batch;
-  outputs: OrderOutput[];
-}
-
+// Permit and Signing Types
 export interface TokenPermissions {
   token: string;
   amount: bigint;
@@ -42,28 +51,12 @@ export interface Permit2Batch {
   signature: string;
 }
 
-export enum OrderStatus {
-  CREATED = 'created',
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  FAILED = 'failed',
+export interface SignedOrder {
+  permit: Permit2Batch;
+  outputs: Output[];
 }
 
-// Bundle types for Signet
-export interface Bundle {
-  transactions: string[];
-  blockNumber: number;
-  status: BundleStatus;
-  bundleId?: string;
-}
-
-export enum BundleStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  FAILED = 'FAILED'
-}
-
-// Swap types
+// Swap-related Types
 export interface SwapInput {
   sourceChainId: number;
   targetChainId: number;
@@ -73,15 +66,6 @@ export interface SwapInput {
   targetAmount: bigint;
   sender: string;
   recipient: string;
-}
-
-export interface SwapState {
-  status: SwapStatus;
-  error?: string;
-  txHash?: string;
-  transactionHash?: string;
-  receipt?: EthersTransactionReceipt;
-  bundleId?: string;
 }
 
 export enum SwapStatus {
@@ -95,4 +79,26 @@ export enum SwapStatus {
   SENDING_BUNDLE = 'SENDING_BUNDLE',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED'
-} 
+}
+
+export interface SwapState {
+  status: SwapStatus;
+  error?: string;
+  txHash?: string;
+  transactionHash?: string;
+  receipt?: TransactionReceipt;
+  bundleId?: string;
+}
+
+export enum BundleStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  FAILED = 'FAILED'
+}
+
+export interface Bundle {
+  transactions: string[];
+  blockNumber: number;
+  status: BundleStatus;
+  bundleId?: string;
+}
